@@ -29,7 +29,7 @@ VALUES('$USER_ID','Hello from user123')
 ON CONFLICT DO NOTHING;
 EOF
 
-# MONGO
+# Mongo
 mongosh --host mongo --quiet <<EOF
 use bleater
 db.profiles.updateOne(
@@ -39,10 +39,10 @@ db.profiles.updateOne(
 )
 EOF
 
-# REDIS
+# Redis
 redis-cli -h redis SET session:$USER_ID active
 
-# MINIO
+# MinIO
 mc alias set local http://minio:9000 minioadmin minioadmin
 mc mb local/avatars || true
 

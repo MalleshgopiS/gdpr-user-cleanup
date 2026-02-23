@@ -15,7 +15,7 @@ psql -h bleat-db -U postgres -d bleat_db \
       SET author_id='deleted_user'
       WHERE author_id='${USER_ID}';"
 
-# REMOVE PII FROM CONTENT
+# REDACT CONTENT
 psql -h bleat-db -U postgres -d bleat_db \
   -c "UPDATE posts
       SET content='[redacted]'
@@ -27,7 +27,7 @@ use bleater
 db.profiles.deleteOne({user_id:"${USER_ID}"})
 EOF
 
-# REDIS SESSION
+# DELETE REDIS SESSION
 redis-cli -h redis DEL session:${USER_ID}
 
 # DELETE MINIO AVATAR

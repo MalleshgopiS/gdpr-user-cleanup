@@ -38,9 +38,8 @@ description: |
     credentials: minioadmin / minioadmin
 
   Environment Setup:
-    The provided setup.sh script seeds all required services
-    with test data. Infrastructure services are pre-provisioned
-    in the Nebula environment.
+    setup.sh seeds initial GDPR-violating data automatically
+    before grading begins.
 
 requirements:
   - Delete auth-db record

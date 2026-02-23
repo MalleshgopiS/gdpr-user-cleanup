@@ -6,13 +6,11 @@ RUN pip3 install \
     redis==5.0.1 \
     requests==2.31.0
 
-ENV KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-
 # Agent workspace
 WORKDIR /workspace
 COPY setup.sh .
 
-# Hidden grader
+# Hidden grader (agent cannot see)
 WORKDIR /tests
 COPY grader.py .
 

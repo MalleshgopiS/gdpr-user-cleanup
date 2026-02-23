@@ -13,6 +13,28 @@ import requests
 USER_ID = "user123"
 
 
+# ---------------- SETUP ----------------
+
+def run_setup():
+    """Seed environment with initial GDPR data."""
+    print("Running setup.sh...")
+
+    result = subprocess.run(
+        ["bash", "/workspace/setup.sh"],
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        print(result.stdout)
+        print(result.stderr)
+        raise RuntimeError("setup.sh failed")
+
+    print("Setup completed.")
+
+
+# ---------------- HELPERS ----------------
+
 def retry(fn, attempts=5):
     """Retry helper for eventual consistency."""
     for _ in range(attempts):
@@ -21,6 +43,8 @@ def retry(fn, attempts=5):
         time.sleep(3)
     return False
 
+
+# ---------------- CHECKS ----------------
 
 def auth_deleted():
     """Verify auth-db user removed."""
@@ -57,6 +81,7 @@ def posts_clean():
     pii = cur.fetchone()[0]
 
     conn.close()
+
     return total_posts > 0 and owned == 0 and pii == 0
 
 
@@ -86,7 +111,7 @@ def avatar_deleted():
 
 
 def idempotent():
-    """Ensure cleanup can run twice safely."""
+    """Ensure cleanup runs twice safely."""
     r1 = subprocess.run(["bash", "/workspace/solution.sh"])
     r2 = subprocess.run(["bash", "/workspace/solution.sh"])
 
@@ -102,7 +127,11 @@ def idempotent():
     ])
 
 
+# ---------------- GRADE ----------------
+
 def grade():
+    run_setup()
+
     print("Waiting for convergence...")
     time.sleep(8)
 
