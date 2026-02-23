@@ -1,6 +1,6 @@
 """
 GDPR Cleanup Grader
-Validates distributed cleanup behavior.
+Validates distributed GDPR cleanup behavior.
 """
 
 import subprocess
@@ -14,6 +14,7 @@ USER_ID = "user123"
 
 
 def retry(fn, attempts=5):
+    """Retry helper for eventual consistency."""
     for _ in range(attempts):
         if fn():
             return True
@@ -22,21 +23,26 @@ def retry(fn, attempts=5):
 
 
 def auth_deleted():
+    """Verify auth-db user removed."""
     conn = psycopg2.connect(
         dbname="auth_db", user="postgres", host="auth-db"
     )
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM users WHERE id=%s", (USER_ID,))
-    res = cur.fetchone()[0]
+    result = cur.fetchone()[0]
     conn.close()
-    return res == 0
+    return result == 0
 
 
 def posts_clean():
+    """Verify posts remain but contain no USER_ID."""
     conn = psycopg2.connect(
         dbname="bleat_db", user="postgres", host="bleat-db"
     )
     cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM posts")
+    total_posts = cur.fetchone()[0]
 
     cur.execute(
         "SELECT COUNT(*) FROM posts WHERE author_id=%s",
@@ -51,21 +57,24 @@ def posts_clean():
     pii = cur.fetchone()[0]
 
     conn.close()
-    return owned == 0 and pii == 0
+    return total_posts > 0 and owned == 0 and pii == 0
 
 
 def mongo_deleted():
+    """Verify MongoDB profile removed."""
     client = MongoClient("mongodb://mongo:27017/")
     db = client["bleater"]
     return db.profiles.count_documents({"user_id": USER_ID}) == 0
 
 
 def redis_deleted():
+    """Verify Redis session removed."""
     r = redis.Redis(host="redis", port=6379)
     return r.get(f"session:{USER_ID}") is None
 
 
 def avatar_deleted():
+    """Verify MinIO avatar deleted."""
     try:
         r = requests.head(
             f"http://minio:9000/avatars/{USER_ID}.png",
@@ -77,6 +86,7 @@ def avatar_deleted():
 
 
 def idempotent():
+    """Ensure cleanup can run twice safely."""
     r1 = subprocess.run(["bash", "/workspace/solution.sh"])
     r2 = subprocess.run(["bash", "/workspace/solution.sh"])
 

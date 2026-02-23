@@ -12,7 +12,7 @@ ENV KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 WORKDIR /workspace
 COPY setup.sh .
 
-# Hidden grader location
+# Hidden grader
 WORKDIR /tests
 COPY grader.py .
 

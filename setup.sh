@@ -30,7 +30,7 @@ ON CONFLICT DO NOTHING;
 EOF
 
 # MONGO
-mongosh --quiet --host mongo <<EOF
+mongosh --host mongo --quiet <<EOF
 use bleater
 db.profiles.updateOne(
  {user_id:"$USER_ID"},
@@ -49,4 +49,4 @@ mc mb local/avatars || true
 echo "avatar" > avatar.png
 mc cp avatar.png local/avatars/$USER_ID.png
 
-echo "Setup complete."
+echo "Setup completed."

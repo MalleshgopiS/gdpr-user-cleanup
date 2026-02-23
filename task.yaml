@@ -16,10 +16,10 @@ description: |
   System Architecture:
 
   PostgreSQL (auth-db)
-    users(id TEXT PRIMARY KEY, email TEXT)
+    table users(id TEXT PRIMARY KEY, email TEXT)
 
   PostgreSQL (bleat-db)
-    posts(id SERIAL, author_id TEXT, content TEXT)
+    table posts(id SERIAL, author_id TEXT, content TEXT)
 
   MongoDB
     database: bleater
@@ -37,13 +37,20 @@ description: |
     object: <USER_ID>.png
     credentials: minioadmin / minioadmin
 
+  Environment Setup:
+    The provided setup.sh script seeds all required services
+    with test data. Infrastructure services are pre-provisioned
+    in the Nebula environment.
+
 requirements:
   - Delete auth-db record
-  - Remove Mongo profile
+  - Remove MongoDB profile
   - Remove Redis session
   - Delete MinIO avatar object
-  - Anonymize posts (do NOT delete)
-  - Remove ALL references to USER_ID from content
+  - Anonymize posts (do NOT delete):
+      * posts must remain
+      * author_id must not equal USER_ID
+      * any content containing USER_ID must be redacted
   - Pipeline must be idempotent
 
 success_criteria:
@@ -51,5 +58,5 @@ success_criteria:
   - Mongo profile removed
   - Redis session removed
   - Avatar returns HTTP 404
-  - No post contains USER_ID
-  - Running twice produces identical state
+  - Posts still exist but contain no USER_ID
+  - Running twice produces identical result
