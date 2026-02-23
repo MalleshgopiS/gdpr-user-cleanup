@@ -1,7 +1,8 @@
-FROM apex_arena/base:nebula-devops-1.0.0
+FROM nebula-devops:latest
 
 USER root
 
+# Install required CLI tools for setup.sh + solution.sh
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     redis-tools \
