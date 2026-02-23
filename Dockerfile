@@ -2,11 +2,11 @@ FROM nebula-devops:latest
 
 USER root
 
-# Install required CLI tools for setup.sh + solution.sh
+# Install required CLI tools
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     redis-tools \
-    mongodb-clients \
+    mongodb-mongosh \
     curl \
     wget \
     ca-certificates \
