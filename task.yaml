@@ -1,81 +1,23 @@
-id: gdpr-user-cleanup
+name: gdpr-user-cleanup
+difficulty: medium
 
-prompt: |
-  [Context]
+description: |
+  Implement a GDPR-compliant cleanup pipeline.
 
-  You are a DevOps engineer responsible for the Bleater platform
-  running on Kubernetes (k3s) in the `bleater` namespace.
+  A user requested account deletion. Remove all personal data
+  across Bleater services.
 
-  A GDPR audit discovered that deleting a user removes credentials
-  only from authentication systems while personal data remains
-  across downstream services.
+  USER_ID = gdpr-user-123
 
-  The affected user:
+requirements:
+  - Delete user from PostgreSQL users table
+  - Preserve posts but anonymize them:
+        author_id = 'deleted_user'
+        content = ''
+  - Remove MongoDB profile
+  - Delete Redis session
+  - Remove MinIO avatar
+  - Script must be idempotent
+  - Save script as /root/solution.sh
 
-      user_id = user123
-
-  Ghost data exists in:
-
-  PostgreSQL (Authentication Service)
-    deployment: auth-db
-    database: auth_db
-    table: users
-    column: id
-
-  PostgreSQL (Posts Service)
-    deployment: bleat-db
-    database: bleater_db
-    table: posts
-    columns:
-      - author_id
-      - content
-
-  MongoDB
-    deployment: mongodb
-    database: bleater
-    collection: profiles
-    field: user_id
-
-  Redis
-    deployment: redis
-    key format:
-      session:<user_id>
-
-  MinIO
-    deployment: minio
-    avatar path:
-      /data/avatars/<user_id>.png
-
-  [TASK]
-
-  Implement a cleanup pipeline using Kubernetes operations
-  (scripts executed via kubectl, Kubernetes Jobs, or equivalent automation).
-
-  The pipeline must:
-
-  1. Delete the user from auth-db
-  2. Remove MongoDB profile
-  3. Delete Redis session
-  4. Delete MinIO avatar
-  5. Preserve posts but anonymize them:
-        author_id = "deleted_user"
-        content   = "[redacted]"
-
-  The pipeline MUST be idempotent:
-  running it multiple times must succeed without errors.
-
-  IMPORTANT:
-  - Do NOT use interactive commands (-it)
-  - Use Kubernetes-native operations only.
-
-  OUTPUT REQUIREMENT:
-
-  Your cleanup pipeline MUST be saved as:
-
-      /root/solution.sh
-
-  The evaluation system will execute this script automatically.
-
-metadata:
-  category: devops
-  difficulty: medium
+author_name: Mallesh

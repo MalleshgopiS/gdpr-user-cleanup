@@ -1,5 +1,8 @@
 FROM nebula-devops:latest
 
-ENV DISPLAY_NUM=1
-ENV COMPUTER_HEIGHT_PX=768
-ENV COMPUTER_WIDTH_PX=1024
+WORKDIR /root
+
+COPY setup.sh /root/setup.sh
+COPY grader.py /root/grader.py
+
+RUN chmod +x /root/setup.sh

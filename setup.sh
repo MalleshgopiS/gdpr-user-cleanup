@@ -1,42 +1,63 @@
 #!/bin/bash
 set -e
 
-/usr/bin/supervisord -c /etc/supervisor/supervisord.conf 2>/dev/null || true
-sleep 5
+echo "Creating GDPR test data..."
+
+NAMESPACE=bleater
+USER_ID="gdpr-user-123"
 
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
-until kubectl get nodes &>/dev/null; do
-  sleep 2
-done
+PG_POD=$(kubectl -n $NAMESPACE get pod -l app=bleater-postgresql \
+  -o jsonpath='{.items[0].metadata.name}')
 
-NS="bleater"
-USER_ID="user123"
+MONGO_POD=$(kubectl -n $NAMESPACE get pod -l app=bleater-mongodb \
+  -o jsonpath='{.items[0].metadata.name}')
 
-echo "Creating GDPR test data..."
+REDIS_POD=$(kubectl -n $NAMESPACE get pod -l app=bleater-redis \
+  -o jsonpath='{.items[0].metadata.name}')
 
-kubectl exec deploy/auth-db -n $NS -- \
-psql -U postgres -d auth_db \
--c "INSERT INTO users(id,email)
-VALUES('$USER_ID','user@test.com')
-ON CONFLICT DO NOTHING;"
+kubectl wait --for=condition=ready pod/$PG_POD -n $NAMESPACE --timeout=120s
+kubectl wait --for=condition=ready pod/$MONGO_POD -n $NAMESPACE --timeout=120s
+kubectl wait --for=condition=ready pod/$REDIS_POD -n $NAMESPACE --timeout=120s
 
-kubectl exec deploy/bleat-db -n $NS -- \
-psql -U postgres -d bleater_db \
--c "INSERT INTO posts(author_id,content)
-VALUES('$USER_ID','hello world');"
+# ---------- PostgreSQL ----------
+kubectl -n $NAMESPACE exec $PG_POD -- bash -c "
+psql -U bleater -d bleater <<EOF
 
-kubectl exec deploy/mongodb -n $NS -- \
-mongosh --eval \
-"db.getSiblingDB('bleater').profiles.updateOne(
- {user_id:'$USER_ID'},
- {\$set:{name:'Test User'}},
- {upsert:true})"
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY
+);
 
-kubectl exec deploy/redis -n $NS -- \
+CREATE TABLE IF NOT EXISTS posts (
+  id SERIAL PRIMARY KEY,
+  author_id TEXT,
+  content TEXT
+);
+
+INSERT INTO users(id)
+VALUES ('$USER_ID')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO posts(author_id,content)
+VALUES ('$USER_ID','hello world');
+
+EOF
+"
+
+# ---------- MongoDB ----------
+kubectl -n $NAMESPACE exec $MONGO_POD -- \
+mongosh --quiet --eval "
+db=db.getSiblingDB('bleater');
+db.users.insertOne({id:'$USER_ID',name:'test'});
+"
+
+# ---------- Redis ----------
+kubectl -n $NAMESPACE exec $REDIS_POD -- \
 redis-cli SET session:$USER_ID active
 
-kubectl exec deploy/minio -n $NS -- \
-sh -c "mkdir -p /data/avatars && touch /data/avatars/${USER_ID}.png"
+# ---------- MinIO avatar ----------
+mkdir -p /data/avatars
+touch /data/avatars/${USER_ID}.png
 
-echo "Setup complete."
+echo "✅ GDPR test data created"
