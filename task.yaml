@@ -2,54 +2,49 @@ name: gdpr-user-cleanup
 difficulty: hard
 
 description: |
-  The Bleater platform fails GDPR compliance because deleting users
-  only removes authentication records while leaving PII across services.
-
-  Implement a "Right to be Forgotten" cleanup pipeline.
+  Implement a GDPR "Right to be Forgotten" cleanup pipeline.
 
   Target user:
-    USER_ID = user123
+      USER_ID = user123
 
   Requirements:
 
   1. Delete auth-db record.
-  2. MongoDB profile must be removed.
-  3. Redis session must be deleted.
-  4. MinIO avatar must be deleted.
-  5. Posts MUST remain but:
-       - author_id must NOT equal USER_ID
-       - content must NOT contain USER_ID
+  2. Delete MongoDB profile document.
+  3. Delete Redis session key.
+  4. Delete MinIO avatar object.
+  5. Posts MUST remain but be anonymized:
+       - author_id MUST become 'deleted_user'
+       - content MUST NOT contain USER_ID
   6. Script must be idempotent.
 
-  --------------------------------------------------
+  ------------------------------------------------
 
-  Environment Details:
+  Database Schemas:
 
-  PostgreSQL:
-    user: postgres
-    password: (none)
-    hosts:
-      - auth-db
-      - bleat-db
+  auth_db.users:
+      id TEXT PRIMARY KEY
+      email TEXT
+
+  bleat_db.posts:
+      id SERIAL
+      author_id TEXT
+      content TEXT
 
   MongoDB:
-    host: mongo
-    database: bleater
-    collection: profiles
+      db: bleater
+      collection: profiles
+      field: user_id
 
   Redis:
-    host: redis
-    key format: session:<USER_ID>
+      key: session:<USER_ID>
 
   MinIO:
-    endpoint: http://minio:9000
-    access_key: minioadmin
-    secret_key: minioadmin
-    bucket: avatars
-    object: <USER_ID>.png
+      endpoint: http://minio:9000
+      access_key: minioadmin
+      secret_key: minioadmin
+      bucket: avatars
+      object: <USER_ID>.png
 
-  Available CLI tools:
-    - psql
-    - mongosh
-    - redis-cli
-    - mc
+  Available tools:
+      psql, mongosh, redis-cli, mc
