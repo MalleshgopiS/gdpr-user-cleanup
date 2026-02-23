@@ -1,11 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
+
+# Fix PATH for Nebula tools
+export PATH=$PATH:/usr/bin:/usr/local/bin:/usr/lib/postgresql/14/bin
 
 echo "Starting Nebula services..."
 /usr/bin/supervisord -c /etc/supervisor/supervisord.conf 2>/dev/null || true
 sleep 5
 
-export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+echo "Waiting for PostgreSQL..."
+until pg_isready -h auth-db -U postgres; do
+  sleep 2
+done
 
 echo "Seeding GDPR violation data..."
 
@@ -25,7 +31,7 @@ VALUES
 ON CONFLICT DO NOTHING;
 EOF
 
-# Mongo profile
+# Mongo
 mongosh --host mongo bleater --eval '
 db.profiles.updateOne(
  {user_id:"user123"},
@@ -33,10 +39,10 @@ db.profiles.updateOne(
  {upsert:true}
 )'
 
-# Redis session
+# Redis
 redis-cli -h redis SET session:user123 active
 
-# MinIO avatar
+# MinIO
 mc alias set minio http://minio:9000 minioadmin minioadmin || true
 mc mb minio/avatars || true
 echo "avatar" | mc pipe minio/avatars/user123.png
