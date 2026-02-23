@@ -5,33 +5,29 @@ USER_ID="user123"
 
 echo "Running GDPR cleanup..."
 
-# AUTH DB
+# Delete auth record
 psql -h auth-db -U postgres -d auth_db \
   -c "DELETE FROM users WHERE id='${USER_ID}';"
 
-# ANONYMIZE POSTS OWNER
+# Anonymize posts
 psql -h bleat-db -U postgres -d bleat_db \
-  -c "UPDATE posts
-      SET author_id='deleted_user'
-      WHERE author_id='${USER_ID}';"
+  -c "
+  UPDATE posts
+  SET author_id='deleted_user',
+      content=''
+  WHERE author_id='${USER_ID}'
+     OR content LIKE '%${USER_ID}%';
+  "
 
-# REDACT CONTENT
-psql -h bleat-db -U postgres -d bleat_db \
-  -c "UPDATE posts
-      SET content='[redacted]'
-      WHERE content LIKE '%${USER_ID}%';"
+# Remove Mongo profile
+mongosh --host mongo bleater --eval \
+"db.profiles.deleteOne({user_id:'${USER_ID}'})"
 
-# DELETE MONGO PROFILE
-mongosh --host mongo --quiet <<EOF
-use bleater
-db.profiles.deleteOne({user_id:"${USER_ID}"})
-EOF
-
-# DELETE REDIS SESSION
+# Remove Redis session
 redis-cli -h redis DEL session:${USER_ID}
 
-# DELETE MINIO AVATAR
-mc alias set local http://minio:9000 minioadmin minioadmin
-mc rm --force local/avatars/${USER_ID}.png || true
+# Remove avatar
+mc alias set minio http://minio:9000 minioadmin minioadmin || true
+mc rm --force minio/avatars/${USER_ID}.png || true
 
-echo "Cleanup finished."
+echo "GDPR cleanup finished."

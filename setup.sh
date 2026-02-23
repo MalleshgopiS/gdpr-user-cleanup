@@ -1,52 +1,44 @@
 #!/bin/bash
 set -e
 
-USER_ID="user123"
+echo "Starting Nebula services..."
+/usr/bin/supervisord -c /etc/supervisor/supervisord.conf 2>/dev/null || true
+sleep 5
+
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
 echo "Seeding GDPR violation data..."
 
-# AUTH DB
-psql -U postgres -d auth_db <<EOF
-CREATE TABLE IF NOT EXISTS users(
- id TEXT PRIMARY KEY,
- email TEXT
-);
-
-INSERT INTO users VALUES('$USER_ID','user@test.com')
+# Auth DB
+psql -h auth-db -U postgres -d auth_db <<EOF
+INSERT INTO users(id,email)
+VALUES ('user123','user123@mail.com')
 ON CONFLICT DO NOTHING;
 EOF
 
-# POSTS DB
-psql -U postgres -d bleat_db <<EOF
-CREATE TABLE IF NOT EXISTS posts(
- id SERIAL PRIMARY KEY,
- author_id TEXT,
- content TEXT
-);
-
-INSERT INTO posts(author_id,content)
-VALUES('$USER_ID','Hello from user123')
+# Bleat DB
+psql -h bleat-db -U postgres -d bleat_db <<EOF
+INSERT INTO posts(id,author_id,content)
+VALUES
+(1,'user123','hello from user123'),
+(2,'other','mention user123 here')
 ON CONFLICT DO NOTHING;
 EOF
 
-# Mongo
-mongosh --host mongo --quiet <<EOF
-use bleater
+# Mongo profile
+mongosh --host mongo bleater --eval '
 db.profiles.updateOne(
- {user_id:"$USER_ID"},
- {\$set:{name:"Test User"}},
+ {user_id:"user123"},
+ {$set:{name:"User 123"}},
  {upsert:true}
-)
-EOF
+)'
 
-# Redis
-redis-cli -h redis SET session:$USER_ID active
+# Redis session
+redis-cli -h redis SET session:user123 active
 
-# MinIO
-mc alias set local http://minio:9000 minioadmin minioadmin
-mc mb local/avatars || true
+# MinIO avatar
+mc alias set minio http://minio:9000 minioadmin minioadmin || true
+mc mb minio/avatars || true
+echo "avatar" | mc pipe minio/avatars/user123.png
 
-echo "avatar" > avatar.png
-mc cp avatar.png local/avatars/$USER_ID.png
-
-echo "Setup completed."
+echo "Seed completed."

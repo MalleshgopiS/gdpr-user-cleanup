@@ -1,61 +1,22 @@
-metadata:
-  name: gdpr-user-cleanup
-  category: devops
-  difficulty: hard
+id: gdpr-user-cleanup
+difficulty: hard
+tags:
+  - devops
+  - databases
+  - gdpr
 
-description: |
-  The Bleater platform fails GDPR audits because deleting a user
-  removes credentials only from auth-db while leaving personal data
-  across distributed systems.
-
+prompt: |
   Implement a GDPR "Right to be Forgotten" cleanup pipeline.
 
-  Target User:
-    USER_ID = user123
+  Remove all PII for user `user123` across:
 
-  System Architecture:
+  - PostgreSQL auth-db
+  - PostgreSQL bleat-db (anonymize posts)
+  - MongoDB profiles
+  - Redis sessions
+  - MinIO avatars
 
-  PostgreSQL (auth-db)
-    table users(id TEXT PRIMARY KEY, email TEXT)
-
-  PostgreSQL (bleat-db)
-    table posts(id SERIAL, author_id TEXT, content TEXT)
-
-  MongoDB
-    database: bleater
-    collection: profiles
-    document:
-      { user_id: <string>, name: <string> }
-
-  Redis
-    key format:
-      session:<USER_ID>
-
-  MinIO
-    endpoint: http://minio:9000
-    bucket: avatars
-    object: <USER_ID>.png
-    credentials: minioadmin / minioadmin
-
-  Environment Setup:
-    setup.sh seeds initial GDPR-violating data automatically
-    before grading begins.
-
-requirements:
-  - Delete auth-db record
-  - Remove MongoDB profile
-  - Remove Redis session
-  - Delete MinIO avatar object
-  - Anonymize posts (do NOT delete):
-      * posts must remain
-      * author_id must not equal USER_ID
-      * any content containing USER_ID must be redacted
-  - Pipeline must be idempotent
-
-success_criteria:
-  - Auth record removed
-  - Mongo profile removed
-  - Redis session removed
-  - Avatar returns HTTP 404
-  - Posts still exist but contain no USER_ID
-  - Running twice produces identical result
+  Requirements:
+  - Posts must remain but be anonymized
+  - No USER_ID references remain
+  - Script must be idempotent

@@ -1,28 +1,11 @@
 FROM nebula-devops:latest
 
-USER root
-
-# Install required CLI tools
-RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    redis-tools \
-    mongodb-mongosh \
-    curl \
-    wget \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install MinIO client
-RUN curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc \
-    -o /usr/local/bin/mc && \
-    chmod +x /usr/local/bin/mc
-
 WORKDIR /workspace
 
 COPY setup.sh /workspace/setup.sh
 COPY solution.sh /workspace/solution.sh
-COPY grader.py /tests/grader.py
 COPY task.yaml /workspace/task.yaml
+COPY grader.py /tests/grader.py
 
 RUN chmod +x /workspace/setup.sh /workspace/solution.sh
 
