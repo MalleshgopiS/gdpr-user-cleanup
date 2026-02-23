@@ -1,22 +1,54 @@
 id: gdpr-user-cleanup
 difficulty: hard
+
 tags:
   - devops
-  - databases
   - gdpr
+  - databases
 
 prompt: |
-  Implement a GDPR "Right to be Forgotten" cleanup pipeline.
+  Implement a GDPR "Right to be Forgotten" cleanup pipeline
+  for user `user123`.
 
-  Remove all PII for user `user123` across:
+  System Architecture:
 
-  - PostgreSQL auth-db
-  - PostgreSQL bleat-db (anonymize posts)
-  - MongoDB profiles
-  - Redis sessions
-  - MinIO avatars
+  PostgreSQL (auth-db)
+    Database: auth_db
+    Table: users(id TEXT PRIMARY KEY, email TEXT)
+
+  PostgreSQL (bleat-db)
+    Database: bleat_db
+    Table: posts(
+        id INT,
+        author_id TEXT,
+        content TEXT
+    )
+
+  MongoDB
+    Database: bleater
+    Collection: profiles
+    Document:
+      {
+        user_id: string,
+        name: string
+      }
+
+  Redis
+    Key format:
+      session:<USER_ID>
+
+  MinIO
+    Endpoint: http://minio:9000
+    Bucket: avatars
+    Object: <USER_ID>.png
 
   Requirements:
-  - Posts must remain but be anonymized
-  - No USER_ID references remain
-  - Script must be idempotent
+
+  1. Delete auth-db user record.
+  2. Posts MUST remain but:
+       - author_id must not equal USER_ID
+       - content must not contain USER_ID
+  3. Delete MongoDB profile.
+  4. Delete Redis session.
+  5. Delete MinIO avatar.
+  6. Script must be idempotent.

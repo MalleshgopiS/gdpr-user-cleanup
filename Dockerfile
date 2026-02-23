@@ -1,4 +1,4 @@
-FROM nebula-devops:latest
+FROM nebula-devops:1.0.0
 
 WORKDIR /workspace
 
