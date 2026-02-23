@@ -1,4 +1,4 @@
-FROM nebula-devops:1.0.0
+FROM apex_arena/base:nebula-devops-1.0.0
 
 USER root
 
