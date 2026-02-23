@@ -2,29 +2,24 @@ metadata:
   name: gdpr-user-cleanup
   category: devops
   difficulty: hard
-  tags:
-    - kubernetes
-    - gdpr
-    - distributed-systems
-    - data-cleanup
 
 description: |
   The Bleater platform fails GDPR audits because deleting a user
   removes credentials only from auth-db while leaving personal data
-  across multiple systems.
+  across distributed systems.
 
-  Implement a "Right to be Forgotten" cleanup pipeline.
+  Implement a GDPR "Right to be Forgotten" cleanup pipeline.
 
-  Target user:
+  Target User:
     USER_ID = user123
 
   System Architecture:
 
   PostgreSQL (auth-db)
-    table users(id TEXT PRIMARY KEY, email TEXT)
+    users(id TEXT PRIMARY KEY, email TEXT)
 
   PostgreSQL (bleat-db)
-    table posts(id SERIAL, author_id TEXT, content TEXT)
+    posts(id SERIAL, author_id TEXT, content TEXT)
 
   MongoDB
     database: bleater
@@ -37,22 +32,24 @@ description: |
       session:<USER_ID>
 
   MinIO
+    endpoint: http://minio:9000
     bucket: avatars
     object: <USER_ID>.png
+    credentials: minioadmin / minioadmin
 
 requirements:
   - Delete auth-db record
-  - Delete MongoDB profile
-  - Delete Redis session
-  - Delete MinIO avatar
+  - Remove Mongo profile
+  - Remove Redis session
+  - Delete MinIO avatar object
   - Anonymize posts (do NOT delete)
-  - Remove all PII references
-  - Must be idempotent
+  - Remove ALL references to USER_ID from content
+  - Pipeline must be idempotent
 
 success_criteria:
-  - User removed from auth-db
+  - Auth record removed
   - Mongo profile removed
   - Redis session removed
   - Avatar returns HTTP 404
-  - Posts contain no reference to USER_ID
-  - Running twice produces identical result
+  - No post contains USER_ID
+  - Running twice produces identical state

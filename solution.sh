@@ -3,23 +3,24 @@ set -e
 
 USER_ID="user123"
 
-export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-
 echo "Running GDPR cleanup..."
 
 # AUTH DB
 psql -h auth-db -U postgres -d auth_db \
   -c "DELETE FROM users WHERE id='${USER_ID}';"
 
-# POSTS (ANONYMIZE)
+# POSTS — anonymize ownership
 psql -h bleat-db -U postgres -d bleat_db \
-  -c "UPDATE posts
-      SET author_id='deleted_user',
-          content='[redacted]'
+  -c "UPDATE posts SET author_id='deleted_user'
       WHERE author_id='${USER_ID}';"
 
+# REMOVE PII REFERENCES ANYWHERE
+psql -h bleat-db -U postgres -d bleat_db \
+  -c "UPDATE posts SET content='[redacted]'
+      WHERE content LIKE '%${USER_ID}%';"
+
 # MONGO
-mongosh --quiet <<EOF
+mongosh --host mongo --quiet <<EOF
 use bleater
 db.profiles.deleteOne({user_id:"${USER_ID}"})
 EOF

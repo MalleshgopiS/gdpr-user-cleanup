@@ -27,12 +27,12 @@ def auth_deleted():
     )
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM users WHERE id=%s", (USER_ID,))
-    result = cur.fetchone()[0]
+    res = cur.fetchone()[0]
     conn.close()
-    return result == 0
+    return res == 0
 
 
-def posts_anonymized():
+def posts_clean():
     conn = psycopg2.connect(
         dbname="bleat_db", user="postgres", host="bleat-db"
     )
@@ -72,8 +72,8 @@ def avatar_deleted():
             timeout=3,
         )
         return r.status_code == 404
-    except:
-        return True
+    except requests.exceptions.RequestException:
+        return False
 
 
 def idempotent():
@@ -85,7 +85,7 @@ def idempotent():
 
     return all([
         auth_deleted(),
-        posts_anonymized(),
+        posts_clean(),
         mongo_deleted(),
         redis_deleted(),
         avatar_deleted(),
@@ -98,7 +98,7 @@ def grade():
 
     checks = {
         "auth_deleted": retry(auth_deleted),
-        "posts_anonymized": retry(posts_anonymized),
+        "posts_clean": retry(posts_clean),
         "mongo_deleted": retry(mongo_deleted),
         "redis_deleted": retry(redis_deleted),
         "avatar_deleted": retry(avatar_deleted),
