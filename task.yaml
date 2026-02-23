@@ -1,23 +1,53 @@
-name: gdpr-user-cleanup
-difficulty: medium
+metadata:
+  name: gdpr-user-cleanup
+  category: devops
+  difficulty: hard
 
 description: |
-  Implement a GDPR-compliant cleanup pipeline.
+  The Bleater platform fails GDPR audits because user deletion
+  only removes authentication records while leaving personal
+  data across multiple services.
 
-  A user requested account deletion. Remove all personal data
-  across Bleater services.
+  Implement a Kubernetes-safe cleanup pipeline that removes
+  all user data while preserving platform integrity.
 
-  USER_ID = gdpr-user-123
+  Target user:
+    USER_ID = user123
+
+  System Architecture:
+
+  PostgreSQL (auth-db)
+    table users(id TEXT PRIMARY KEY, email TEXT)
+
+  PostgreSQL (bleat-db)
+    table posts(id SERIAL, author_id TEXT, content TEXT)
+
+  MongoDB
+    database: bleater
+    collection: profiles
+    document: { user_id: <string>, name: <string> }
+
+  Redis
+    key format:
+      session:<USER_ID>
+
+  MinIO
+    bucket: avatars
+    object: <USER_ID>.png
 
 requirements:
-  - Delete user from PostgreSQL users table
-  - Preserve posts but anonymize them:
-        author_id = 'deleted_user'
-        content = ''
-  - Remove MongoDB profile
+  - Delete auth-db user record
+  - Remove Mongo profile
   - Delete Redis session
-  - Remove MinIO avatar
+  - Delete MinIO avatar object
+  - Anonymize posts (do NOT delete posts)
+  - Remove all PII references
   - Script must be idempotent
-  - Save script as /root/solution.sh
 
-author_name: Mallesh
+success_criteria:
+  - No auth record exists
+  - No Mongo profile exists
+  - No Redis session exists
+  - Avatar object returns 404
+  - Posts contain no USER_ID references
+  - Running pipeline twice produces identical state

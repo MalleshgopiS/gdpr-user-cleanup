@@ -1,8 +1,14 @@
-FROM nebula-devops:latest
+FROM nebula-devops:1.0.0
 
-WORKDIR /root
+RUN pip3 install psycopg2-binary pymongo redis requests
 
-COPY setup.sh /root/setup.sh
-COPY grader.py /root/grader.py
+ENV KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
-RUN chmod +x /root/setup.sh
+WORKDIR /workspace
+
+COPY setup.sh .
+COPY grader.py .
+
+RUN chmod +x setup.sh
+
+CMD ["python3", "grader.py"]
