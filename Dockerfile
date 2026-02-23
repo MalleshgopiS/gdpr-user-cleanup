@@ -1,17 +1,28 @@
 FROM nebula-devops:1.0.0
 
-RUN pip3 install \
-    psycopg2-binary==2.9.9 \
-    pymongo==4.6.1 \
-    redis==5.0.1 \
-    requests==2.31.0
+USER root
 
-# Agent workspace
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    redis-tools \
+    mongodb-clients \
+    curl \
+    wget \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install MinIO client
+RUN curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc \
+    -o /usr/local/bin/mc && \
+    chmod +x /usr/local/bin/mc
+
 WORKDIR /workspace
-COPY setup.sh .
 
-# Hidden grader (agent cannot see)
-WORKDIR /tests
-COPY grader.py .
+COPY setup.sh /workspace/setup.sh
+COPY solution.sh /workspace/solution.sh
+COPY grader.py /tests/grader.py
+COPY task.yaml /workspace/task.yaml
+
+RUN chmod +x /workspace/setup.sh /workspace/solution.sh
 
 CMD ["python3", "/tests/grader.py"]
