@@ -1,8 +1,6 @@
 """
 GDPR Cleanup Grader
-
-Validates that the agent implemented a correct
-Right-to-be-Forgotten pipeline across distributed services.
+Validates distributed cleanup behavior.
 """
 
 import subprocess
@@ -16,7 +14,6 @@ USER_ID = "user123"
 
 
 def retry(fn, attempts=5):
-    """Retry helper for eventual consistency."""
     for _ in range(attempts):
         if fn():
             return True
@@ -24,22 +21,18 @@ def retry(fn, attempts=5):
     return False
 
 
-# ---------------- AUTH ----------------
 def auth_deleted():
-    """Verify auth-db user removed."""
     conn = psycopg2.connect(
         dbname="auth_db", user="postgres", host="auth-db"
     )
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM users WHERE id=%s", (USER_ID,))
-    count = cur.fetchone()[0]
+    result = cur.fetchone()[0]
     conn.close()
-    return count == 0
+    return result == 0
 
 
-# ---------------- POSTS ----------------
 def posts_anonymized():
-    """Verify posts no longer contain user identity or PII."""
     conn = psycopg2.connect(
         dbname="bleat_db", user="postgres", host="bleat-db"
     )
@@ -61,24 +54,18 @@ def posts_anonymized():
     return owned == 0 and pii == 0
 
 
-# ---------------- MONGO ----------------
 def mongo_deleted():
-    """Verify Mongo profile removed."""
     client = MongoClient("mongodb://mongo:27017/")
     db = client["bleater"]
     return db.profiles.count_documents({"user_id": USER_ID}) == 0
 
 
-# ---------------- REDIS ----------------
 def redis_deleted():
-    """Verify Redis session removed."""
     r = redis.Redis(host="redis", port=6379)
     return r.get(f"session:{USER_ID}") is None
 
 
-# ---------------- MINIO ----------------
 def avatar_deleted():
-    """Verify avatar object removed from MinIO."""
     try:
         r = requests.head(
             f"http://minio:9000/avatars/{USER_ID}.png",
@@ -89,11 +76,9 @@ def avatar_deleted():
         return True
 
 
-# ---------------- IDEMPOTENCY ----------------
 def idempotent():
-    """Run solution twice and ensure stable state."""
-    r1 = subprocess.run(["bash", "/workspace/run.sh"])
-    r2 = subprocess.run(["bash", "/workspace/run.sh"])
+    r1 = subprocess.run(["bash", "/workspace/solution.sh"])
+    r2 = subprocess.run(["bash", "/workspace/solution.sh"])
 
     if r1.returncode != 0 or r2.returncode != 0:
         return False
@@ -107,7 +92,6 @@ def idempotent():
     ])
 
 
-# ---------------- MAIN ----------------
 def grade():
     print("Waiting for convergence...")
     time.sleep(8)
