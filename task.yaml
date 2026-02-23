@@ -1,54 +1,55 @@
-id: gdpr-user-cleanup
+name: gdpr-user-cleanup
 difficulty: hard
 
-tags:
-  - devops
-  - gdpr
-  - databases
+description: |
+  The Bleater platform fails GDPR compliance because deleting users
+  only removes authentication records while leaving PII across services.
 
-prompt: |
-  Implement a GDPR "Right to be Forgotten" cleanup pipeline
-  for user `user123`.
+  Implement a "Right to be Forgotten" cleanup pipeline.
 
-  System Architecture:
-
-  PostgreSQL (auth-db)
-    Database: auth_db
-    Table: users(id TEXT PRIMARY KEY, email TEXT)
-
-  PostgreSQL (bleat-db)
-    Database: bleat_db
-    Table: posts(
-        id INT,
-        author_id TEXT,
-        content TEXT
-    )
-
-  MongoDB
-    Database: bleater
-    Collection: profiles
-    Document:
-      {
-        user_id: string,
-        name: string
-      }
-
-  Redis
-    Key format:
-      session:<USER_ID>
-
-  MinIO
-    Endpoint: http://minio:9000
-    Bucket: avatars
-    Object: <USER_ID>.png
+  Target user:
+    USER_ID = user123
 
   Requirements:
 
-  1. Delete auth-db user record.
-  2. Posts MUST remain but:
-       - author_id must not equal USER_ID
-       - content must not contain USER_ID
-  3. Delete MongoDB profile.
-  4. Delete Redis session.
-  5. Delete MinIO avatar.
+  1. Delete auth-db record.
+  2. MongoDB profile must be removed.
+  3. Redis session must be deleted.
+  4. MinIO avatar must be deleted.
+  5. Posts MUST remain but:
+       - author_id must NOT equal USER_ID
+       - content must NOT contain USER_ID
   6. Script must be idempotent.
+
+  --------------------------------------------------
+
+  Environment Details:
+
+  PostgreSQL:
+    user: postgres
+    password: (none)
+    hosts:
+      - auth-db
+      - bleat-db
+
+  MongoDB:
+    host: mongo
+    database: bleater
+    collection: profiles
+
+  Redis:
+    host: redis
+    key format: session:<USER_ID>
+
+  MinIO:
+    endpoint: http://minio:9000
+    access_key: minioadmin
+    secret_key: minioadmin
+    bucket: avatars
+    object: <USER_ID>.png
+
+  Available CLI tools:
+    - psql
+    - mongosh
+    - redis-cli
+    - mc
