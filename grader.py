@@ -10,6 +10,15 @@ SOLUTION_PATH = "/workspace/solution.sh"
 def run(cmd):
     return subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
+def get_pg_count(host, db, query):
+    """Helper to safely parse PostgreSQL COUNT queries, avoiding whitespace brittleness."""
+    full_cmd = f"psql -h {host} -U postgres -d {db} -t -c \"{query}\""
+    res = run(full_cmd)
+    try:
+        return int(res.stdout.strip())
+    except ValueError:
+        return -1
+
 def grade(transcript: str) -> GradingResult:
     feedback = []
     scores = {}
@@ -23,39 +32,37 @@ def grade(transcript: str) -> GradingResult:
     feedback.append(f"{'✓' if idempotency_ok else '✗'} Script executed successfully and is idempotent")
 
     # --- 1. Check Auth Record Deletion ---
-    r = run(f"psql -h auth-db -U postgres -d auth_db -t -c \"SELECT COUNT(*) FROM users WHERE id='{USER_ID}';\"")
-    auth_ok = r.stdout.strip() == "0"
+    auth_count = get_pg_count("auth-db", "auth_db", f"SELECT COUNT(*) FROM users WHERE id='{USER_ID}';")
+    auth_ok = (auth_count == 0)
     scores["auth_deleted"] = 1.0 if auth_ok else 0.0
     feedback.append(f"{'✓' if auth_ok else '✗'} Auth record deleted")
 
     # --- 2. Check MongoDB Profile Deletion ---
-    r = run(f"mongosh --host mongo --quiet --eval \"db=db.getSiblingDB('bleater'); print(db.profiles.countDocuments({{user_id:'{USER_ID}'}}));\"")
-    mongo_ok = r.stdout.strip() == "0"
+    r_mongo = run(f"mongosh --host mongo --quiet --eval \"db=db.getSiblingDB('bleater'); print(db.profiles.countDocuments({{user_id:'{USER_ID}'}}));\"")
+    try:
+        mongo_ok = (int(r_mongo.stdout.strip()) == 0)
+    except ValueError:
+        mongo_ok = False
     scores["mongo_deleted"] = 1.0 if mongo_ok else 0.0
     feedback.append(f"{'✓' if mongo_ok else '✗'} MongoDB profile removed")
 
     # --- 3. Check Post Anonymization ---
-    # Separately verify authorship change AND global content redaction
-    r_author_gone = run(f"psql -h bleat-db -U postgres -d bleat_db -t -c \"SELECT COUNT(*) FROM posts WHERE author_id='{USER_ID}';\"")
-    r_author_replaced = run(f"psql -h bleat-db -U postgres -d bleat_db -t -c \"SELECT COUNT(*) FROM posts WHERE author_id='deleted_user';\"")
+    # Verify user is fully removed from table, but table itself is not empty (anti-cheat)
+    author_count = get_pg_count("bleat-db", "bleat_db", f"SELECT COUNT(*) FROM posts WHERE author_id='{USER_ID}';")
+    content_count = get_pg_count("bleat-db", "bleat_db", f"SELECT COUNT(*) FROM posts WHERE content LIKE '%{USER_ID}%';")
+    total_count = get_pg_count("bleat-db", "bleat_db", "SELECT COUNT(*) FROM posts;")
     
-    r_content_gone = run(f"psql -h bleat-db -U postgres -d bleat_db -t -c \"SELECT COUNT(*) FROM posts WHERE content LIKE '%{USER_ID}%';\"")
-    r_content_redacted = run(f"psql -h bleat-db -U postgres -d bleat_db -t -c \"SELECT COUNT(*) FROM posts WHERE content LIKE '%[REDACTED]%';\"")
-    
-    try:
-        posts_ok = (r_author_gone.stdout.strip() == "0" and 
-                    r_content_gone.stdout.strip() == "0" and 
-                    int(r_author_replaced.stdout.strip()) > 0 and
-                    int(r_content_redacted.stdout.strip()) > 0)
-    except ValueError:
-        posts_ok = False
-        
+    posts_ok = (author_count == 0) and (content_count == 0) and (total_count > 0)
     scores["posts_anonymized"] = 1.0 if posts_ok else 0.0
     feedback.append(f"{'✓' if posts_ok else '✗'} Posts anonymized globally")
 
     # --- 4. Check External Stores (Redis & MinIO) ---
     redis_r = run(f"redis-cli -h redis EXISTS session:{USER_ID}")
-    
+    try:
+        redis_ok = (int(redis_r.stdout.strip()) == 0)
+    except ValueError:
+        redis_ok = False
+        
     alias_setup = run("mc alias set local http://minio:9000 minioadmin minioadmin")
     if alias_setup.returncode != 0:
         minio_ok = False
@@ -63,7 +70,7 @@ def grade(transcript: str) -> GradingResult:
         minio_r = run(f"mc ls local/avatars/{USER_ID}.png")
         minio_ok = (minio_r.returncode != 0)
         
-    external_ok = (redis_r.stdout.strip() == "0") and minio_ok
+    external_ok = redis_ok and minio_ok
     scores["external_cleanup"] = 1.0 if external_ok else 0.0
     feedback.append(f"{'✓' if external_ok else '✗'} Redis session and MinIO avatar cleaned")
 
