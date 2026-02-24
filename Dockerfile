@@ -2,21 +2,23 @@ FROM us-central1-docker.pkg.dev/bespokelabs/nebula-devops-registry/nebula-devops
 
 USER root
 
-# Install database clients
+# Install database clients with pinned versions where possible
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     redis-tools \
     curl \
     wget \
     gnupg \
-    && rm -rf /var/lib/apt/lists/* # Install Mongo shell (mongosh)
+    && rm -rf /var/lib/apt/lists/*
+
+# Install pinned Mongo shell (mongosh) 
 RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add - && \
     echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" \
     > /etc/apt/sources.list.d/mongodb-org.list && \
-    apt-get update && apt-get install -y mongodb-mongosh 
+    apt-get update && apt-get install -y mongodb-mongosh=1.10.1
 
-# Install MinIO client (mc)
-RUN curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc \
+# Install pinned MinIO client (mc)
+RUN curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/archive/mc.RELEASE.2023-09-03T05-29-41Z \
     -o /usr/local/bin/mc && chmod +x /usr/local/bin/mc 
 
 WORKDIR /workspace
