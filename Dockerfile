@@ -2,17 +2,16 @@ FROM us-central1-docker.pkg.dev/bespokelabs/nebula-devops-registry/nebula-devops
 
 USER root
 
-# Install database clients for verification
+# Install database clients
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     redis-tools \
     curl \
     wget \
-    && rm -rf /var/lib/apt/lists/* 
-
-# Install Mongo shell (mongosh)
-RUN wget -qO - https://pgp.mongodb.com/server-6.0.asc | apt-key add - && \
-    echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/* # Install Mongo shell (mongosh)
+RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add - && \
+    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" \
     > /etc/apt/sources.list.d/mongodb-org.list && \
     apt-get update && apt-get install -y mongodb-mongosh 
 

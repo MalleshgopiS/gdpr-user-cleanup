@@ -1,20 +1,24 @@
-name: gdpr-user-cleanup
+id: gdpr-cleanup-pipeline
+name: GDPR "Right to be Forgotten" Pipeline
 difficulty: hard
-description: |
-  The "Bleater" platform is failing GDPR audits. When a user is deleted, only their
-  credentials are removed, leaving "ghost data" across the architecture.
+category: devops-orchestration
+prompt: |
+  The "Bleater" social platform is failing GDPR compliance audits. When users delete their accounts, PII is left behind in several services.
 
-  Requirements for USER_ID 'user123':
-  1. Delete Auth-DB record (PostgreSQL).
-  2. Anonymize Posts (PostgreSQL): Change author_id to 'deleted_user' and redact PII content.
-  3. Delete Profile document (MongoDB).
-  4. Delete Session key (Redis).
-  5. Delete Avatar object (MinIO).
-  6. Ensure the script is idempotent.
+  Your task is to create an idempotent cleanup script (`solution.sh`) for USER_ID 'user123'.
+
+  Requirements:
+  1. **Auth DB (PostgreSQL):** Delete the user record from `auth_db.users`.
+  2. **Bleat DB (PostgreSQL):** Anonymize all posts. Change `author_id` to 'deleted_user' and replace any content containing the user ID with '[REDACTED]'.
+  3. **Profile DB (MongoDB):** Delete all profile documents for the user.
+  4. **Session Store (Redis):** Remove the session key.
+  5. **Object Store (MinIO):** Delete the user's avatar image.
 
   Database Details:
-  - Auth DB: auth_db.users (id, email)
-  - Bleat DB: bleat_db.posts (author_id, content)
-  - MongoDB: db: bleater, collection: profiles
-  - Redis Key: session:<USER_ID>
-  - MinIO: bucket: avatars, object: <USER_ID>.png
+  - Auth DB: host `auth-db`, db `auth_db`, table `users(id, email)`
+  - Bleat DB: host `bleat-db`, db `bleat_db`, table `posts(author_id, content)`
+  - MongoDB: host `mongo`, db `bleater`, collection `profiles`
+  - Redis: host `redis`, key format `session:<USER_ID>`
+  - MinIO: host `http://minio:9000`, bucket `avatars`, object `<USER_ID>.png`
+
+  The script must be idempotent (safe to run multiple times).

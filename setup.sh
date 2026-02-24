@@ -1,26 +1,25 @@
 #!/bin/bash
 set -e
-export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 USER_ID="user123"
 
 echo "Seeding GDPR violation data for $USER_ID..."
 
-# Seed Auth DB (PostgreSQL)
-psql -h auth-db -U postgres -d auth_db -c "INSERT INTO users(id, email) VALUES('$USER_ID', 'user@test.com') ON CONFLICT DO NOTHING;"
+# 1. Seed Auth DB (PostgreSQL)
+psql -h auth-db -U postgres -d auth_db -c "INSERT INTO users(id, email) VALUES('$USER_ID', 'user@test.com') ON CONFLICT (id) DO NOTHING;"
 
-# Seed Posts (PostgreSQL) - Contains PII
-psql -h bleat-db -U postgres -d bleat_db -c "INSERT INTO posts(author_id, content) VALUES('$USER_ID', 'Hello, this is $USER_ID message');"
+# 2. Seed Posts (PostgreSQL)
+psql -h bleat-db -U postgres -d bleat_db -c "INSERT INTO posts(author_id, content) VALUES('$USER_ID', 'Private message from $USER_ID');"
 
-# Seed Profile (MongoDB)
-mongosh --host mongo --quiet --eval "db=db.getSiblingDB('bleater'); db.profiles.insertOne({user_id:'$USER_ID'});"
+# 3. Seed Profile (MongoDB)
+mongosh --host mongo --quiet --eval "db=db.getSiblingDB('bleater'); db.profiles.updateOne({user_id:'$USER_ID'}, {\$set: {user_id:'$USER_ID', bio:'My secret bio'}}, {upsert:true});"
 
-# Seed Session (Redis)
-redis-cli -h redis SET session:$USER_ID "active"
+# 4. Seed Session (Redis)
+redis-cli -h redis SET session:$USER_ID "active_session_token_123"
 
-# Seed Avatar (MinIO)
+# 5. Seed Avatar (MinIO)
 mc alias set local http://minio:9000 minioadmin minioadmin
 mc mb local/avatars || true
-echo "avatar-content" > /tmp/avatar.png
+echo "binary-image-data" > /tmp/avatar.png
 mc cp /tmp/avatar.png local/avatars/$USER_ID.png
 
-echo "Seed complete."
+echo "Seed complete. Environment is now non-compliant."
