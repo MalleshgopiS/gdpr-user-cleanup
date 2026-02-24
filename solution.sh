@@ -2,7 +2,8 @@
 set -e
 USER_ID="user123"
 
-# 1. Anonymize Posts
+# 1. Anonymize Posts in PostgreSQL
+# We use double quotes for the shell and let the shell expand the variable into the SQL string
 psql -h bleat-db -U postgres -d bleat_db -c "UPDATE posts SET author_id='deleted_user', content=REGEXP_REPLACE(content, '$USER_ID', '[REDACTED]', 'g') WHERE author_id='$USER_ID' OR content LIKE '%$USER_ID%';"
 
 # 2. Delete Auth record
@@ -14,7 +15,7 @@ mongosh --host mongo --quiet --eval "db=db.getSiblingDB('bleater'); db.profiles.
 # 4. Delete Redis Session
 redis-cli -h redis DEL session:$USER_ID
 
-# 5. Delete MinIO Avatar (Idempotent wrapper)
+# 5. Delete MinIO Avatar (Idempotent check)
 mc alias set local http://minio:9000 minioadmin minioadmin
 if mc ls local/avatars/$USER_ID.png >/dev/null 2>&1; then
     mc rm local/avatars/$USER_ID.png

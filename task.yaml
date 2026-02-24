@@ -1,20 +1,22 @@
 name: gdpr-user-cleanup
 difficulty: hard
-category: databases
+category: devops
 description: |
-  The "Bleater" platform is failing GDPR audits. When a user is deleted, "ghost data" remains across the architecture.
+  The "Bleater" social media platform is failing GDPR audits. When a user requests to be forgotten, only their auth record is deleted, leaving "ghost data" across the microservices.
 
-  Requirements for USER_ID 'user123':
-  1. Delete Auth-DB record (PostgreSQL: auth-db).
-  2. Anonymize Posts (PostgreSQL: bleat-db): Change author_id to 'deleted_user' and redact PII content (replace user ID with '[REDACTED]').
-  3. Delete Profile document (MongoDB: mongo).
-  4. Delete Session key (Redis: redis).
-  5. Delete Avatar object (MinIO: http://minio:9000).
-  6. **Ensure the script is idempotent (must be able to run multiple times without error).**
+  Task Requirements for USER_ID 'user123':
+  1. Delete Auth-DB record (PostgreSQL).
+  2. Anonymize Posts (PostgreSQL): Change `author_id` to 'deleted_user' and redact content containing the user ID (replace with '[REDACTED]').
+  3. Delete Profile document (MongoDB).
+  4. Delete Session key (Redis).
+  5. Delete Avatar object (MinIO).
+  6. **Ensure the script is idempotent (safe to run multiple times without error).**
 
   Database Details:
-  - Auth DB: db `auth_db`, table `users(id, email)`
-  - Bleat DB: db `bleat_db`, table `posts(author_id, content)`
-  - MongoDB: db `bleater`, collection `profiles`
-  - Redis: key `session:<USER_ID>`
-  - MinIO: bucket `avatars`, object `<USER_ID>.png`, credentials `minioadmin` / `minioadmin`
+  - PostgreSQL (Auth & Bleat): user `postgres`, no password. 
+    - Auth DB: host `auth-db`, db `auth_db`, table `users(id, email)`
+    - Bleat DB: host `bleat-db`, db `bleat_db`, table `posts(author_id, content)`
+  - MongoDB: host `mongo`, db `bleater`, collection `profiles`
+  - Redis: host `redis`, key format `session:<USER_ID>`
+  - MinIO: host `http://minio:9000`, bucket `avatars`, object `<USER_ID>.png`
+    - Credentials: user `minioadmin`, pass `minioadmin`
