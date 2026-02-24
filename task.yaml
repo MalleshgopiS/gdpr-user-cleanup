@@ -6,7 +6,7 @@ description: |
 
   Task Requirements for USER_ID 'user123':
   1. Delete Auth-DB record (PostgreSQL).
-  2. Anonymize Posts (PostgreSQL): Change `author_id` to 'deleted_user' and redact content containing the user ID (replace with '[REDACTED]').
+  2. Anonymize Posts (PostgreSQL): Change `author_id` to 'deleted_user'. Also, globally redact any post content across the entire table that mentions the user ID (replace the ID with '[REDACTED]').
   3. Delete Profile document (MongoDB).
   4. Delete Session key (Redis).
   5. Delete Avatar object (MinIO).

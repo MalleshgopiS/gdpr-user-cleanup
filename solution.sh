@@ -2,8 +2,10 @@
 USER_ID="user123"
 
 # 1. Anonymize Posts in PostgreSQL
-# Uses REGEXP_REPLACE to redact PII while keeping the post intact
-psql -h bleat-db -U postgres -d bleat_db -c "UPDATE posts SET author_id='deleted_user', content=REGEXP_REPLACE(content, '$USER_ID', '[REDACTED]', 'g') WHERE author_id='$USER_ID' OR content LIKE '%$USER_ID%';" || true
+# Change authorship for posts created by the user
+psql -h bleat-db -U postgres -d bleat_db -c "UPDATE posts SET author_id='deleted_user' WHERE author_id='$USER_ID';" || true
+# Globally redact the user's ID from any content using standard string REPLACE
+psql -h bleat-db -U postgres -d bleat_db -c "UPDATE posts SET content=REPLACE(content, '$USER_ID', '[REDACTED]') WHERE content LIKE '%$USER_ID%';" || true
 
 # 2. Delete Auth record
 psql -h auth-db -U postgres -d auth_db -c "DELETE FROM users WHERE id='$USER_ID';" || true
