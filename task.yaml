@@ -1,50 +1,20 @@
 name: gdpr-user-cleanup
 difficulty: hard
-
 description: |
-  Implement a GDPR "Right to be Forgotten" cleanup pipeline.
+  The "Bleater" platform is failing GDPR audits. When a user is deleted, only their
+  credentials are removed, leaving "ghost data" across the architecture.
 
-  Target user:
-      USER_ID = user123
+  Requirements for USER_ID 'user123':
+  1. Delete Auth-DB record (PostgreSQL).
+  2. Anonymize Posts (PostgreSQL): Change author_id to 'deleted_user' and redact PII content.
+  3. Delete Profile document (MongoDB).
+  4. Delete Session key (Redis).
+  5. Delete Avatar object (MinIO).
+  6. Ensure the script is idempotent.
 
-  Requirements:
-
-  1. Delete auth-db record.
-  2. Delete MongoDB profile document.
-  3. Delete Redis session key.
-  4. Delete MinIO avatar object.
-  5. Posts MUST remain but be anonymized:
-       - author_id MUST become 'deleted_user'
-       - content MUST NOT contain USER_ID
-  6. Script must be idempotent.
-
-  ------------------------------------------------
-
-  Database Schemas:
-
-  auth_db.users:
-      id TEXT PRIMARY KEY
-      email TEXT
-
-  bleat_db.posts:
-      id SERIAL
-      author_id TEXT
-      content TEXT
-
-  MongoDB:
-      db: bleater
-      collection: profiles
-      field: user_id
-
-  Redis:
-      key: session:<USER_ID>
-
-  MinIO:
-      endpoint: http://minio:9000
-      access_key: minioadmin
-      secret_key: minioadmin
-      bucket: avatars
-      object: <USER_ID>.png
-
-  Available tools:
-      psql, mongosh, redis-cli, mc
+  Database Details:
+  - Auth DB: auth_db.users (id, email)
+  - Bleat DB: bleat_db.posts (author_id, content)
+  - MongoDB: db: bleater, collection: profiles
+  - Redis Key: session:<USER_ID>
+  - MinIO: bucket: avatars, object: <USER_ID>.png

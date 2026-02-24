@@ -1,31 +1,26 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -e
-
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 USER_ID="user123"
 
-echo "Seeding GDPR violation data..."
+echo "Seeding GDPR violation data for $USER_ID..."
 
-psql -h auth-db -U postgres -d auth_db <<SQL
-INSERT INTO users(id,email)
-VALUES('$USER_ID','user@test.com')
-ON CONFLICT DO NOTHING;
-SQL
+# Seed Auth DB (PostgreSQL)
+psql -h auth-db -U postgres -d auth_db -c "INSERT INTO users(id, email) VALUES('$USER_ID', 'user@test.com') ON CONFLICT DO NOTHING;"
 
-psql -h bleat-db -U postgres -d bleat_db <<SQL
-INSERT INTO posts(author_id,content)
-VALUES('$USER_ID','hello from $USER_ID');
-SQL
+# Seed Posts (PostgreSQL) - Contains PII
+psql -h bleat-db -U postgres -d bleat_db -c "INSERT INTO posts(author_id, content) VALUES('$USER_ID', 'Hello, this is $USER_ID message');"
 
-mongosh --host mongo --quiet <<JS
-db=db.getSiblingDB("bleater");
-db.profiles.insertOne({user_id:"$USER_ID"});
-JS
+# Seed Profile (MongoDB)
+mongosh --host mongo --quiet --eval "db=db.getSiblingDB('bleater'); db.profiles.insertOne({user_id:'$USER_ID'});"
 
-redis-cli -h redis SET session:$USER_ID active
+# Seed Session (Redis)
+redis-cli -h redis SET session:$USER_ID "active"
 
+# Seed Avatar (MinIO)
 mc alias set local http://minio:9000 minioadmin minioadmin
 mc mb local/avatars || true
-echo avatar > /tmp/avatar.png
-mc cp /tmp/avatar.png local/avatars/$USER_ID.png || true
+echo "avatar-content" > /tmp/avatar.png
+mc cp /tmp/avatar.png local/avatars/$USER_ID.png
 
-echo "Seed complete"
+echo "Seed complete."
